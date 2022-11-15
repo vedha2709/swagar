@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utils
+  labels:
+    name: utils
+  #annotations:
+    #"sidecar.jaegertracing.io/inject": "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: utils
+  template:
+    metadata:
+      labels:
+        app: utils
+    spec:
+      containers:
+        - name: utils
+          image: guru1219/utils:prod
+          env: 
+          - name: OTEL_TRACES_EXPORTER
+            value: jaeger
+          - name: OTEL_EXPORTER_JAEGER_TIMEOUT 
+            value: "10000"
+          - name: OTEL_EXPORTER_JAEGER_ENDPOINT 
+            value: "http://simplest-collector.observability:14250"
+          - name: OTEL_SERVICE_NAME
+            value: utils
+          imagePullPolicy: Always
+          ports:
+            - name: backend-port
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+          - mountPath: /var
+            name: dynamic
+      securityContext:
+        runAsUser: 12000
+        runAsGroup: 22000
+        fsGroup: 33000 
+      volumes:
+        - name: dynamic
+          persistentVolumeClaim:
+            claimName: dynamic-volume   
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: utils
+spec:
+    clusterIP: None
+    selector:
+        app: utils
+    ports:
+        - protocol: TCP
+          port: 8080
+          targetPort: 8080
